@@ -1,4 +1,4 @@
-package laird.artsim;
+package laird.artsim.gui;
 
 import javafx.application.Application;
 import javafx.concurrent.ScheduledService;
@@ -14,6 +14,10 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import javafx.util.Duration;
+import laird.artsim.cellularautomaton.AutomatonState;
+import laird.artsim.cellularautomaton.AutomatonUpdate;
+import laird.artsim.stepbasedsimulation.Simulator;
+import java.util.ArrayList;
 
 public class Main extends Application
 {
@@ -21,7 +25,16 @@ public class Main extends Application
     private UpdateCheckService service;
 
     public static void main(String[] args) {
-        launch(args);
+        pretest();
+//        launch(args);
+    }
+
+    private static void pretest()
+    {
+        Simulator<AutomatonState> simulator = new Simulator<>(new AutomatonUpdate());
+        AutomatonState initialState = new AutomatonState(new int[]{0, 0, 0, 0, 1, 0, 0, 0});
+        ArrayList<AutomatonState> result = simulator.runSimulation(initialState, 10);
+        System.out.println(result);
     }
 
     @Override
