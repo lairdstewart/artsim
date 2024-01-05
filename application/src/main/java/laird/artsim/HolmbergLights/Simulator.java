@@ -38,69 +38,91 @@ public class Simulator {
         this.bulbRadius = bulbRadius;
     }
 
-    public List<Node> runSimulation(List<Point2D.Double> initialState) {
-        List<Point2D.Double> previousState = initialState;
+    public List<Node> runSimulation(List<Bulb> initialState) {
+        List<Bulb> previousState = initialState;
         List<Node> result = new ArrayList<>();
-        result.add(stateToNode(initialState));
+        result.add(bulbsToNode(initialState));
 
-        List<List<Point2D.Double>> states = new ArrayList<>();
+        List<List<Bulb>> states = new ArrayList<>();
         states.add(initialState);
 
         for (int i = 0; i < numSteps; i++) {
-            List<Point2D.Double> nextState = nextState(previousState);
+            List<Bulb> nextState = nextState(previousState);
             states.add(nextState);
-            result.add(stateToNode(nextState));
+            result.add(bulbsToNode(nextState));
             previousState = nextState;
         }
 
         return result;
     }
 
-    public Node stateToNode(List<Point2D.Double> states) {
+    public Node bulbsToNode(List<Bulb> bulbs) {
         List<Circle> circles = new ArrayList<>();
-        for (Point2D.Double state : states) {
-            circles.add(new Circle(state.x, state.y, bulbRadius));
+        for (Bulb bulb : bulbs) {
+            circles.add(new Circle(bulb.position.x, bulb.position.y, bulb.radius));
         }
         Pane result = new Pane();
         result.getChildren().addAll(circles);
         return result;
     }
 
-    public List<Point2D.Double> nextState(List<Point2D.Double>bulbs) {
-        List<Point2D.Double> result = new ArrayList<>();
+    public List<Bulb> nextState(List<Bulb> bulbs) {
+        List<Bulb> result = new ArrayList<>();
         for (int i = 0; i < bulbs.size(); i++) {
-            Point2D.Double bulb = bulbs.get(i);
+            Bulb bulb = bulbs.get(i);
 
+            // combine bulbs if close together
+            List<Bulb> overlappingBulbs = new ArrayList<>();
+            for (int j = 0; j < bulbs.size(); j++) {
+                if (i == j) {
+                    continue;
+                }
+                Bulb otherBulb = bulbs.get(j);
+                if (bulb.overlapsAlot(otherBulb)) {
+                    overlappingBulbs.add(otherBulb);
+                }
+            }
+
+            if (overlappingBulbs.size() > 0) {
+                bulb.combineWith(overlappingBulbs);
+                bulbs.removeAll(overlappingBulbs);
+                result.add(bulb);
+                continue;
+            }
+
+            // otherwise, update this bulb (pos, vel) based on force from others
             double xComponent = 0;
             double yComponent = 0;
             for (int j = 0; j < bulbs.size(); j++) {
                 if (i == j) {
                     continue;
                 }
-                Point2D.Double otherBulb = bulbs.get(j);
+                Bulb otherBulb = bulbs.get(j);
                 Point.Double force = forceFromOtherBulb(bulb, otherBulb);
                 xComponent += force.x;
                 yComponent += force.y;
             }
 
             Point2D.Double force = new Point.Double(xComponent, yComponent);
-            Point2D.Double updatedBulb = applyForce(bulb, force);
+            Bulb updatedBulb = applyForce(bulb, force);
             result.add(updatedBulb);
         }
 
         return result;
     }
 
-    public Point2D.Double applyForce(Point2D.Double point, Point2D.Double force) {
+    public Bulb applyForce(Bulb bulb, Point2D.Double force) {
         double dx = force.x * gravityConstant;
         double dy = force.y * gravityConstant;
-        return new Point2D.Double(point.x + dx, point.y + dy);
+        Bulb newBulb = new Bulb(bulb);
+        newBulb.setPosition(new Point2D.Double(bulb.position.x + dx, bulb.position.y + dy));
+        return newBulb;
     }
 
-    public static Point.Double forceFromOtherBulbs(Point.Double lightBulb, List<Point.Double> otherLightBulbs) {
+    public static Point.Double forceFromOtherBulbs(Bulb lightBulb, List<Bulb> otherBulbs) {
         double xComponent = 0;
         double yComponent = 0;
-        for (Point.Double other : otherLightBulbs) {
+        for (Bulb other : otherBulbs) {
             Point.Double force = forceFromOtherBulb(lightBulb, other);
             xComponent += force.x;
             yComponent += force.y;
@@ -112,10 +134,10 @@ public class Simulator {
     I'm assuming the proportion of the magnitude to the hypotenuse is the same as the unkown x to dx, not sure if that
     is geometrically accurate.
      */
-    public static Point.Double forceFromOtherBulb(Point.Double lightBulb, Point.Double otherBulb) {
-        double dx = otherBulb.x - lightBulb.x;
-        double dy = otherBulb.y - lightBulb.y;
-        double hypotenuse = Math.sqrt(dx*dx + dy*dy);
+    public static Point.Double forceFromOtherBulb(Bulb lightBulb, Bulb otherBulb) {
+        double dx = otherBulb.position.x - lightBulb.position.x;
+        double dy = otherBulb.position.y - lightBulb.position.y;
+        double distance = Math.sqrt(dx*dx + dy*dy);
 
 //        double magnitude;
 //        if (Math.sqrt(lightBulb.distance(otherBulb)) < 0.000001) {
@@ -124,14 +146,14 @@ public class Simulator {
 //            magnitude = 1 / Math.sqrt(lightBulb.distance(otherBulb));
 //        }
 
-        double magnitude = 1 / Math.sqrt(lightBulb.distance(otherBulb));
+        double magnitude = 1 / Math.sqrt(distance);
 //        if (magnitude > 100) {
 //            magnitude = 0;
 //        }
 
 
-        double forceX = (magnitude/hypotenuse)*dx;
-        double forceY = (magnitude/hypotenuse)*dy;
+        double forceX = (magnitude/distance)*dx;
+        double forceY = (magnitude/distance)*dy;
         return new Point2D.Double(forceX, forceY);
     }
 }
